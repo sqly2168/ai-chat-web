@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="hu">
+<head>
+<meta charset="UTF-8">
+<title>Gemma chat running on my own VGA</title>
+</head>
+<body>
+<h1>Gemma 12B Chat</h1>
+<textarea id="chatlog" rows="20" cols="80" readonly></textarea><br>
+<input type="text" id="userinput" size="60">
+<button onclick="sendMessage()">Küldés</button>
+
+<script>
+async function sendMessage() {
+    const msg = document.getElementById("userinput").value;
+    if (!msg) return;
+    document.getElementById("chatlog").value += "Te: " + msg + "\n";
+
+    const resp = await fetch("/chat", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({message: msg})
+    });
+    const data = await resp.json();
+    document.getElementById("chatlog").value += "Gemma: " + data.response + "\n";
+    document.getElementById("userinput").value = "";
+}
+</script>
+</body>
+</html>
