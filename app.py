@@ -19,7 +19,7 @@ def chat():
             [LLAMA_BIN, "-m", MODEL_PATH],
             input=user_message.encode("utf-8"),
             capture_output=True,
-            timeout=120
+            #timeout=120
         )
         response = result.stdout.decode("utf-8").strip()
     except subprocess.TimeoutExpired:
@@ -30,23 +30,4 @@ def chat():
     return jsonify({"response": response})
 
 if __name__ == "__main__":
-    app.run(debug=True)
-
-
-
-'''User types a message
--JS sends POST /chat with JSON
--Flask receives it
--Backend runs gemma
--Model returns response
--Flask sends JSON response
--JS displays the reply'''
-
-#conclusion
-# problem: every msg the model is restarted, loaded, gives a response and unloads.
-#I"ll need to:
-#    stream the model, 
-#    use it on websocket like chatgpt,
-#    then optimize the gpu
-#    and finally give it system prompt, personaliy, memory
-#I'll need to take some time and understand this version before upgrading my project
+    app.run(host="0.0.0.0", port=5000, debug=True)
