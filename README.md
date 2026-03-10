@@ -23,4 +23,6 @@ I"ll need to:
     and finally give it system prompt, personaliy, memory
 I'll need to take some time and understand this version before moving to next version.
 #----------------------------------------------------------------------------
+#V2 stream the model - use flask-socketio extension
 #----------------------------------------------------------------------------
+

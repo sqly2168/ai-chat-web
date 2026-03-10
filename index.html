@@ -1,30 +1,55 @@
 <!DOCTYPE html>
 <html lang="hu">
 <head>
-<meta charset="UTF-8">
-<title>Gemma chat running on my own VGA</title>
+    <meta charset="UTF-8">
+    <title>Gemma 12B Chat Streaming</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+        #chatlog { width: 100%; font-family: monospace; background: #1e1e1e; color: #d4d4d4; padding: 10px; }
+        body { font-family: sans-serif; max-width: 800px; margin: 20px auto; }
+    </style>
 </head>
 <body>
-<h1>Gemma 12B Chat</h1>
-<textarea id="chatlog" rows="20" cols="80" readonly></textarea><br>
-<input type="text" id="userinput" size="60">
-<button onclick="sendMessage()">Küldés</button>
+    <h1>Gemma 12B Chat</h1>
+    <textarea id="chatlog" rows="25" readonly></textarea><br><br>
+    <input type="text" id="userinput" size="60" placeholder="Írj valamit...">
+    <button onclick="sendMessage()">Küldés</button>
 
-<script>
-async function sendMessage() {
-    const msg = document.getElementById("userinput").value;
-    if (!msg) return;
-    document.getElementById("chatlog").value += "Te: " + msg + "\n";
+    <script>
+        const socket = io();
+        const chatlog = document.getElementById("chatlog");
+        let isFirstToken = false;
 
-    const resp = await fetch("/chat", {
-        method: "POST",
-        headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({message: msg})
-    });
-    const data = await resp.json();
-    document.getElementById("chatlog").value += "Gemma: " + data.response + "\n";
-    document.getElementById("userinput").value = "";
-}
-</script>
+        socket.on("model_response", data => {
+            if (isFirstToken) {
+                // Az első tokennél eltüntetjük a thinking jelzést
+                chatlog.value = chatlog.value.replace("[thinking...]", "");
+                isFirstToken = false;
+            }
+            chatlog.value += data.token;
+            chatlog.scrollTop = chatlog.scrollHeight; // Mindig az aljára görget
+        });
+
+        socket.on("model_done", () => {
+            chatlog.value += "\n---\n";
+            chatlog.scrollTop = chatlog.scrollHeight;
+        });
+
+        function sendMessage() {
+            const msg = document.getElementById("userinput").value;
+            if (!msg) return;
+
+            chatlog.value += "Te: " + msg + "\nGemma: [thinking...]";
+            isFirstToken = true; // Jelezzük a scriptnek, hogy a következő token törölheti a thinkinget
+            
+            socket.emit("user_message", {message: msg});
+            document.getElementById("userinput").value = "";
+        }
+
+        // Enter gombra is küldjön
+        document.getElementById("userinput").addEventListener("keypress", (e) => {
+            if (e.key === "Enter") sendMessage();
+        });
+    </script>
 </body>
 </html>
