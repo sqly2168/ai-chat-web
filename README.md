@@ -22,7 +22,23 @@ I"ll need to:
     then optimize the gpu
     and finally give it system prompt, personaliy, memory
 I'll need to take some time and understand this version before moving to next version.
+
+
+
+
+
+
 #----------------------------------------------------------------------------
 #V2 stream the model - use flask-socketio extension
 #----------------------------------------------------------------------------
 
+
+
+
+
+Due to many problems with:
+    -stdout buffering
+    -subprocess deadlock
+    -treading/eventlet conflict
+I decided to move forward with a different approach:
+Instead of running the model directly through a subprocess (llama-cli) and manually parsing its stdout output, I switched to using the llama.cpp HTTP server (llama-server).
