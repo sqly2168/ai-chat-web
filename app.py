@@ -5,11 +5,26 @@ from flask import Flask, send_from_directory, request
 from flask_socketio import SocketIO
 
 app = Flask(__name__)
-# Az eventlet kell a streaminghez, de a sima is jó lehet
+
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode="eventlet")
 
-# Ez a cím a llama-servered címe
+
 LLAMA_SERVER_URL = "http://127.0.0.1:8080/completion"
+
+#chat history - resets when the model is reloaded
+chat_history = {}
+
+def build_prompt(history):
+    prompt = ""
+
+    for msg in history:
+        if msg["role"] == "user":
+            prompt += f"<start_of_turn>user\n{msg['content']}<end_of_turn>\n"
+        elif msg["role"] == "assistant":
+            prompt += f"<start_of_turn>model\n{msg['content']}<end_of_turn>\n"
+
+    prompt += "<start_of_turn>model\n"
+    return prompt
 
 @app.route("/")
 def index():
@@ -18,10 +33,20 @@ def index():
 @socketio.on("user_message")
 def handle_message(data):
     sid = request.sid
-    user_input = data.get("message", "")
+    user_input = data.get("message", "").strip()
 
-    # A Gemma 3 speciális prompt formátuma (amit a logodban is láttunk)
-    prompt = f"<start_of_turn>user\n{user_input}<end_of_turn>\n<start_of_turn>model\n"
+    if not user_input:
+        return
+
+    if sid not in chat_history:
+        chat_history[sid] = []
+
+    chat_history[sid].append({
+        "role": "user",
+        "content": user_input
+    })
+
+    prompt = build_prompt(chat_history[sid])
 
     payload = {
         "prompt": prompt,
@@ -31,25 +56,34 @@ def handle_message(data):
     }
 
     def stream_to_web():
+        full_response = ""
+
         try:
-            # stream=True, hogy ne várja meg a végét, hanem jöjjenek a tokenek
             r = requests.post(LLAMA_SERVER_URL, json=payload, stream=True, timeout=120)
-            
+
             for line in r.iter_lines():
                 if line:
-                    # A llama-server "data: {...}" formátumban küldi a választ
-                    line_str = line.decode('utf-8')
+                    line_str = line.decode("utf-8")
+
                     if line_str.startswith("data: "):
                         content_json = json.loads(line_str[6:])
                         token = content_json.get("content", "")
-                        
+
                         if token:
+                            full_response += token
                             socketio.emit("model_response", {"token": token}, room=sid)
-                        
+
                         if content_json.get("stop"):
                             break
-            
+
+            # assistant answer save to history
+            chat_history[sid].append({
+                "role": "assistant",
+                "content": full_response
+            })
+
             socketio.emit("model_done", {}, room=sid)
+
         except Exception as e:
             print(f"Hiba a streaming közben: {e}")
             socketio.emit("model_response", {"token": f"\n[Hiba: {e}]\n"}, room=sid)
@@ -57,6 +91,14 @@ def handle_message(data):
 
     socketio.start_background_task(stream_to_web)
 
+
+@app.route("/clear", methods=["POST"])
+def clear_chat():
+    sid = request.json.get("sid", "")
+    if sid in chat_history:
+        chat_history[sid] = []
+    return {"status": "cleared"}
+
 if __name__ == "__main__":
-    # Itt a port 5000, amin a böngészőben eléred
+    # http://ipv4:5000/
     socketio.run(app, host="0.0.0.0", port=5000)
