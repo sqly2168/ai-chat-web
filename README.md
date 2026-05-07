@@ -42,3 +42,8 @@ Due to many problems with:
     -treading/eventlet conflict
 I decided to move forward with a different approach:
 Instead of running the model directly through a subprocess (llama-cli) and manually parsing its stdout output, I switched to using the llama.cpp HTTP server (llama-server).
+#----------------------------------------------------------------------------
+After giving my model some very basic memory, it remembers my previous questions and answers - but these are getting deleted when the session ends.
+
+Next up: I'd like to prompt my model for specific behaviour
+update: successfully updated the build prompt funciton in the app.py file. Ai now thinks hes a funny uncle givin advice to the user.

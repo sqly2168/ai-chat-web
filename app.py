@@ -15,13 +15,21 @@ LLAMA_SERVER_URL = "http://127.0.0.1:8080/completion"
 chat_history = {}
 
 def build_prompt(history):
-    prompt = ""
+    system_prompt = (
+        "You are a cool, funny uncle who loves to give advice to the user. "
+        "Answer with humor and do not repeat yourself."
+    )
+
+    prompt = f"<start_of_turn>system\n{system_prompt}<end_of_turn>\n"
 
     for msg in history:
-        if msg["role"] == "user":
-            prompt += f"<start_of_turn>user\n{msg['content']}<end_of_turn>\n"
-        elif msg["role"] == "assistant":
-            prompt += f"<start_of_turn>model\n{msg['content']}<end_of_turn>\n"
+        role = msg["role"]
+        content = msg["content"]
+
+        if role == "user":
+            prompt += f"<start_of_turn>user\n{content}<end_of_turn>\n"
+        elif role == "assistant":
+            prompt += f"<start_of_turn>model\n{content}<end_of_turn>\n"
 
     prompt += "<start_of_turn>model\n"
     return prompt
